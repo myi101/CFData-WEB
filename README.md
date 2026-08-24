@@ -16,8 +16,7 @@ CFData-Web 是一个基于 Go 的 Cloudflare IP 测试与筛选工具，提供�
 - APK：支持 Android WebView 壳运行内置后端。
 
 ## 快速开始
-#Docker方式
-# CFData-WEB Docker 部署指南
+# Docker 部署指南
 
 本项目的 Docker 镜像通过 GitHub Actions 自动构建，支持全架构（`amd64`, `arm64`, `arm/v7`, `arm/v6`, `386`），完美适配 x86 软路由、群晖/威联通 NAS、树莓派及各类 ARM 开发板。
 
@@ -106,7 +105,7 @@ http://<你的设备IP>:13335
 * **请务必将 Cloudflare 测速流量/IP 设为直连（Bypass/White List）**。
 * 若测速流量通过代理节点转发，测得的延迟与速度将是代理服务器的数值，导致测试结果失真。
 
-二进制方式（请到原著作者项目下载）
+# 二进制部署指南（请到原著作者项目下载）
 从 [Releases](https://github.com/PoemMisty/CFData-WEB/releases/latest) 下载对应平台程序后运行。
 
 默认启动 Web 模式：
