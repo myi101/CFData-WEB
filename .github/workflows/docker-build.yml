@@ -18,7 +18,7 @@ jobs:
         with:
           repository: 'PoemMisty/CFData-WEB'
           ref: 'main'
-
+          
       - name: 创建 Dockerfile
         run: |
           cat << 'EOF' > Dockerfile
@@ -35,7 +35,7 @@ jobs:
           FROM alpine:latest
           WORKDIR /app
           COPY --from=builder /app/cfdata-web .
-          EXPOSE 8080
+          EXPOSE 13335
           CMD ["./cfdata-web"]
           EOF
 
