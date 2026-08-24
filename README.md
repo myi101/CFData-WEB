@@ -16,7 +16,97 @@ CFData-Web 是一个基于 Go 的 Cloudflare IP 测试与筛选工具，提供�
 - APK：支持 Android WebView 壳运行内置后端。
 
 ## 快速开始
+#Docker方式
+# CFData-WEB Docker 部署指南
 
+本项目的 Docker 镜像通过 GitHub Actions 自动构建，支持全架构（`amd64`, `arm64`, `arm/v7`, `arm/v6`, `386`），完美适配 x86 软路由、群晖/威联通 NAS、树莓派及各类 ARM 开发板。
+
+---
+
+## 🚀 镜像信息
+
+* **镜像地址**：`ghcr.io/myi101/cfdata-web:latest` *(注：使用时请将 `myi101` 替换为你的 GitHub 用户名)*
+* **默认端口**：`13335`
+* **支持架构**：`linux/amd64`, `linux/arm64`, `linux/arm/v7`, `linux/arm/v6`, `linux/386`
+
+---
+
+## 📦 部署方式
+
+### 1. Docker CLI 命令行部署
+
+在 SSH 终端中直接运行：
+
+```bash
+docker run -d \
+  --name cfdata-web \
+  --restart unless-stopped \
+  -p 13335:13335 \
+  ghcr.io/myi101/cfdata-web:latest
+```
+
+---
+
+### 2. Docker Compose 部署
+
+新建 `docker-compose.yml` 文件：
+
+```yaml
+version: '3.8'
+
+services:
+  cfdata-web:
+    image: ghcr.io/myi101/cfdata-web:latest
+    container_name: cfdata-web
+    restart: unless-stopped
+    ports:
+      - "13335:13335"
+```
+
+在同级目录下执行启动命令：
+```bash
+docker compose up -d
+```
+
+---
+
+### 3. 群晖 NAS 部署 (Container Manager)
+
+1. 打开群晖 **Container Manager** -> **项目** -> 点击 **新增**。
+2. 输入项目名称 `cfdata-web`，选择存放路径。
+3. 来源选择 **创建 docker-compose.yml**，填入上方 Docker Compose 配置（将镜像路径中的用户名改为你的 GitHub 账号）。
+4. 点击下一步并完成构建即可。
+
+---
+
+### 4. OpenWrt 部署 (LuCI Docker 界面)
+
+1. 进入 OpenWrt 后台 -> **Docker** -> **容器** -> 点击 **新增**。
+2. **容器名称**：`cfdata-web`
+3. **Docker 镜像**：`ghcr.io/myi101/cfdata-web:latest`
+4. **端口映射**：宿主机端口 `13335` 映射到容器端口 `13335`
+5. **重启策略**：选择 `Always` 或 `Unless Stopped`
+6. 点击 **提交并启动**。
+
+---
+
+## 🌐 访问服务
+
+容器启动成功后，在浏览器访问：
+
+```text
+http://<你的设备IP>:13335
+```
+
+---
+
+## ⚠️ 注意事项（旁路由/代理环境）
+
+如果您的软路由或 NAS 开启了 **OpenClash / PassWall / ShadowSocksR Plus+** 等代理服务：
+* **请务必将 Cloudflare 测速流量/IP 设为直连（Bypass/White List）**。
+* 若测速流量通过代理节点转发，测得的延迟与速度将是代理服务器的数值，导致测试结果失真。
+
+二进制方式（请到原著作者项目下载）
 从 [Releases](https://github.com/PoemMisty/CFData-WEB/releases/latest) 下载对应平台程序后运行。
 
 默认启动 Web 模式：
