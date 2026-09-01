@@ -1,16 +1,23 @@
-FROM golang:1.22-alpine AS builder
+FROM golang:1.25.4-alpine AS builder
 
-WORKDIR /app
+WORKDIR /src
 
-RUN apk add --no-cache ca-certificates git curl
+RUN apk add --no-cache ca-certificates curl
 
 COPY combined_refactor/ ./combined_refactor/
 
-WORKDIR /app/combined_refactor
+WORKDIR /src/combined_refactor
 
-RUN CGO_ENABLED=0 go build \
+RUN curl -fsSL --retry 3 --connect-timeout 10 \
+    https://curl.se/ca/cacert.pem \
+    -o ca-certificates.crt
+
+ARG VERSION=dev
+
+RUN CGO_ENABLED=0 \
+    go build \
     -trimpath \
-    -ldflags="-s -w" \
+    -ldflags="-s -w -X main.appVersion=${VERSION}" \
     -o /cfdata-web .
 
 FROM alpine:latest
