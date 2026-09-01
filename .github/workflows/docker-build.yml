@@ -13,11 +13,11 @@ jobs:
       packages: write
 
     steps:
-      - name: 检出原作者最新源码
+    - name: 检出原作者最新源码
         uses: actions/checkout@v4
         with:
           repository: 'PoemMisty/CFData-WEB'
-          ref: 'main'
+          ref: 'v1.7.8'
           
       - name: 创建 Dockerfile
         run: |
