@@ -15,19 +15,45 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4  # 修复：降级为真实存在的 v4 稳定版
+        uses: actions/checkout@v4
 
-      - name: Get latest upstream release
-        id: release
+      # 修改 1：提前执行登录步骤，以便后续拥有查询个人镜像库的权限
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # 修改 2：增加版本检测逻辑
+      - name: Check for new release
+        id: check
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -e
           echo "获取 PoemMisty/CFData-WEB 最新 Release..."
-          
           TAG=$(gh api repos/PoemMisty/CFData-WEB/releases/latest --jq '.tag_name')
-          echo "最新版本: $TAG"
           
+          IMAGE="ghcr.io/${{ github.repository_owner }}/cfdata-web:$TAG"
+          
+          # 检查个人仓库中是否已经存在当前上游版本的镜像
+          if docker manifest inspect "$IMAGE" > /dev/null 2>&1; then
+            echo "✅ 镜像 $IMAGE 已存在，跳过本次构建。"
+            echo "should_build=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "🚀 发现新版本 $TAG，或者手动触发了更新，准备构建..."
+            echo "should_build=true" >> "$GITHUB_OUTPUT"
+            echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          fi
+
+      # 后续保留原版稳定的逻辑，但加上 if 判断：只有 should_build 为 true 时才执行
+      - name: Download upstream binary
+        if: steps.check.outputs.should_build == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -e
           BIN_URL=$(gh api repos/PoemMisty/CFData-WEB/releases/latest --jq '.assets[] | select(.name=="cfdata-linux-arm64") | .browser_download_url')
           
           if [ -z "$BIN_URL" ]; then
@@ -38,29 +64,23 @@ jobs:
           echo "下载地址: $BIN_URL"
           curl -fL --retry 3 "$BIN_URL" -o cfdata-linux-arm64
           chmod +x cfdata-linux-arm64
-          
-          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
           ls -lh cfdata-linux-arm64
 
       - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3  # 新增：解决跨架构构建时 RUN 命令报错的问题
+        if: steps.check.outputs.should_build == 'true'
+        uses: docker/setup-qemu-action@v3
 
       - name: Set up Docker Buildx
+        if: steps.check.outputs.should_build == 'true'
         uses: docker/setup-buildx-action@v3
 
-      - name: Login to GHCR
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.repository_owner }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
       - name: Build and push Docker image
-        uses: docker/build-push-action@v5  # 修复：降级为 v5 稳定版
+        if: steps.check.outputs.should_build == 'true'
+        uses: docker/build-push-action@v5
         with:
           context: .
           platforms: linux/arm64
           push: true
           tags: |
             ghcr.io/${{ github.repository_owner }}/cfdata-web:latest
-            ghcr.io/${{ github.repository_owner }}/cfdata-web:${{ steps.release.outputs.tag }}
+            ghcr.io/${{ github.repository_owner }}/cfdata-web:${{ steps.check.outputs.tag }}
