@@ -2,10 +2,11 @@ FROM alpine:latest
 
 WORKDIR /app
 
-# 额外添加 tzdata 以防止部分 Go 程序的时区报错
+# CA 证书 + 时区
 RUN apk add --no-cache ca-certificates tzdata
 
-COPY cfdata-linux-arm64 /app/cfdata
+# Workflow 会根据目标架构，把官方 Release 二进制复制为 cfdata
+COPY cfdata /app/cfdata
 
 RUN chmod +x /app/cfdata
 
