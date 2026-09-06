@@ -1,40 +1,139 @@
-# CFData-Web （Docker版本自动生成）
+# CFData-Web Docker 适配版
 
-CFData-Web 是一个基于 Go 的 Cloudflare IP 测试与筛选工具，提供本地 Web 与 CLI 两种使用方式，支持官方 IP 段扫描、非标目标测试、测速、结果筛选、导出和 GitHub 上传。
+> 本项目基于 [PoemMisty/CFData-WEB](https://github.com/PoemMisty/CFData-WEB) 官方项目进行适配。
+>
+> **本项目仅增加 Docker 镜像打包与自动发布能力，不修改 CFData-WEB 的核心功能。**
+>
+> 主要解决原项目在群晖 NAS、软路由、Linux 服务器等 Docker 环境中的部署问题：无需手动下载对应架构的二进制文件，直接拉取 Docker 镜像即可运行。
 
-[在线演示站](https://cfdata-demo.cce.de5.net/) 仅使用浏览器内虚拟数据，用于预览界面与交互；真实使用请下载正式版本。
+## 本项目解决的需求
 
-![image](img/demo.png)
+原作者已经通过 Release 提供不同平台的正式编译版本，但在 NAS、软路由等设备上直接使用二进制程序时，仍需要自行判断 CPU 架构、下载对应文件、上传到设备、赋予执行权限并配置长期运行。
 
-## 功能
+本项目只针对这一部署环节进行适配：
 
-- 官方优选：扫描 Cloudflare IPv4/IPv6，按数据中心继续详细延迟测试。
-- 非标优选：上传本地 txt/csv 或填写网络 URL，测试自定义 IP/域名与端口。
-- 测速：支持单点测速、批量测速、非标并发测速和测速阈值筛选。
-- 导出：支持 CSV/TXT、自定义字段、IP 类型筛选、合格结果筛选。
-- 上传：支持将导出结果上传到 GitHub。
-- APK：支持 Android WebView 壳运行内置后端。
+- **不改变原作者的扫描、测速、筛选、导出等功能。**
+- **直接使用原作者 Release 中已经编译好的 Linux 程序。**
+- 通过 GitHub Actions 自动检测原作者最新 Release。
+- 自动下载官方 `linux/amd64` 和 `linux/arm64` 程序。
+- 自动分别打包成对应架构的 Docker 镜像。
+- 自动创建 Multi-Arch 镜像。
+- 使用 `latest` 时，Docker 会根据设备 CPU 架构自动选择正确的镜像。
+- 原作者发布新版本后，可由定时任务自动发现新版本并重新打包、更新 `latest`。
 
-## 快速开始
-## Docker 部署指南
+### 与原作者项目的关系
 
-本项目的 Docker 镜像通过 GitHub Actions 自动构建，支持全架构（`amd64`, `arm64`, `arm/v7`, `arm/v6`, `386`），完美适配 x86 软路由、群晖/威联通 NAS、树莓派及各类 ARM 开发板。
+```text
+PoemMisty/CFData-WEB
+        │
+        │ 官方 Release
+        ▼
+官方 Linux 二进制
+        │
+        ├── cfdata-linux-amd64
+        └── cfdata-linux-arm64
+        │
+        │ 本项目仅增加 Docker 封装
+        ▼
+GitHub Actions 自动构建
+        │
+        ▼
+GHCR Multi-Arch 镜像
+        │
+        ├── linux/amd64
+        └── linux/arm64
+        │
+        ▼
+Docker 自动选择架构
+```
+
+### 为什么不重新编译？
+
+本项目的目标是**尽量保持 Docker 版本与原作者 Release 版本一致**。
+
+因此 Docker 镜像不是从源码重新编译 CFData-WEB，而是直接封装原作者 Release 中已经编译完成的对应 Linux 二进制：
+
+```text
+原作者正式 Release
+        ↓
+下载对应 Linux 二进制
+        ↓
+Docker 镜像封装
+```
+
+而不是：
+
+```text
+源代码
+  ↓
+本项目重新编译
+  ↓
+Docker 镜像
+```
+
+这样可以减少自行编译环境、Go 版本及依赖差异造成的问题，也使 Docker 镜像与原作者正式 Release 的对应关系更加清晰。
 
 ---
 
-### 🚀 镜像信息
+## Docker 镜像
 
-* **镜像地址**：`ghcr.io/myi101/cfdata-web:latest` *(注：使用时请将 `myi101` 替换为你的 GitHub 用户名)*
-* **默认端口**：`13335`
-* **支持架构**：`linux/amd64`, `linux/arm64`, `linux/arm/v7`, `linux/arm/v6`, `linux/386`
+### 镜像地址
+
+```text
+ghcr.io/myi101/cfdata-web:latest
+```
+
+如果使用自己的 Fork，请将 `myi101` 替换为自己的 GitHub 用户名。
+
+### 默认端口
+
+```text
+13335
+```
+
+### 当前支持的 Docker 架构
+
+```text
+linux/amd64
+linux/arm64
+```
+
+| 设备 | Docker 架构 | 自动使用 |
+|---|---|---|
+| Intel / AMD PC、服务器、x86 NAS | `linux/amd64` | `cfdata-linux-amd64` |
+| 群晖 DS218 等 ARM64 设备 | `linux/arm64` | `cfdata-linux-arm64` |
+
+> 原作者 Release 中的 Windows、macOS、Android 等程序属于其他平台，不能作为 Linux Docker 容器的运行程序，因此不会放入 Linux Multi-Arch 镜像。
+
+### 自动更新流程
+
+```text
+定时检查原作者最新 Release
+              ↓
+        是否发现新版本？
+          ↙           ↘
+        否             是
+        ↓              ↓
+      跳过       下载官方 AMD64
+                       ↓
+                构建 amd64 镜像
+                       ↓
+                下载官方 ARM64
+                       ↓
+                构建 arm64 镜像
+                       ↓
+                创建 Multi-Arch
+                       ↓
+              更新版本号 + latest
+```
+
+如果当前版本已经存在并且同时包含 `amd64`、`arm64`，则不会重复构建。
 
 ---
 
-### 📦 部署方式
+## Docker 部署
 
-#### 1. Docker CLI 命令行部署
-
-在 SSH 终端中直接运行：
+### Docker CLI
 
 ```bash
 docker run -d \
@@ -44,15 +143,9 @@ docker run -d \
   ghcr.io/myi101/cfdata-web:latest
 ```
 
----
-
-#### 2. Docker Compose 部署
-
-新建 `docker-compose.yml` 文件：
+### Docker Compose
 
 ```yaml
-version: '3.8'
-
 services:
   cfdata-web:
     image: ghcr.io/myi101/cfdata-web:latest
@@ -62,50 +155,58 @@ services:
       - "13335:13335"
 ```
 
-在同级目录下执行启动命令：
+启动：
+
 ```bash
 docker compose up -d
 ```
 
----
+### 群晖 Container Manager
 
-#### 3. 群晖 NAS 部署 (Container Manager)
+1. 打开 **Container Manager → 项目 → 新增**。
+2. 创建或粘贴上面的 `docker-compose.yml`。
+3. 使用镜像 `ghcr.io/myi101/cfdata-web:latest`。
+4. 完成部署。
 
-1. 打开群晖 **Container Manager** -> **项目** -> 点击 **新增**。
-2. 输入项目名称 `cfdata-web`，选择存放路径。
-3. 来源选择 **创建 docker-compose.yml**，填入上方 Docker Compose 配置（将镜像路径中的用户名改为你的 GitHub 账号）。
-4. 点击下一步并完成构建即可。
+对于 DS218 这类 ARM64 群晖，无需手动选择 ARM64 镜像；Docker 会从 Multi-Arch 镜像中自动选择 `linux/arm64`。
 
----
+### OpenWrt / 软路由
 
-#### 4. OpenWrt 部署 (LuCI Docker 界面)
-
-1. 进入 OpenWrt 后台 -> **Docker** -> **容器** -> 点击 **新增**。
-2. **容器名称**：`cfdata-web`
-3. **Docker 镜像**：`ghcr.io/myi101/cfdata-web:latest`
-4. **端口映射**：宿主机端口 `13335` 映射到容器端口 `13335`
-5. **重启策略**：选择 `Always` 或 `Unless Stopped`
-6. 点击 **提交并启动**。
-
----
-
-### 🌐 访问服务
-
-容器启动成功后，在浏览器访问：
+创建容器时：
 
 ```text
-http://<你的设备IP>:13335
+容器名称：cfdata-web
+镜像：ghcr.io/myi101/cfdata-web:latest
+端口：13335 → 13335
+重启策略：Always / Unless Stopped
 ```
 
 ---
 
-### ⚠️ 注意事项（旁路由/代理环境）
+## 访问 Web 页面
 
-如果您的软路由或 NAS 开启了 **OpenClash / PassWall / ShadowSocksR Plus+** 等代理服务：
-* **请务必将 Cloudflare 测速流量/IP 设为直连（Bypass/White List）**。
-* 若测速流量通过代理节点转发，测得的延迟与速度将是代理服务器的数值，导致测试结果失真。
+容器启动成功后：
+
+```text
+http://<设备IP>:13335
+```
+
+例如：
+
+```text
+http://192.168.2.200:13335
+```
 
 ---
+
+## 功能
+
+- 官方优选：扫描 Cloudflare IPv4/IPv6，按数据中心继续详细延迟测试。
+- 非标优选：上传本地 txt/csv 或填写网络 URL，测试自定义 IP/域名与端口。
+- 测速：支持单点测速、批量测速、非标并发测速和测速阈值筛选。
+- 导出：支持 CSV/TXT、自定义字段、IP 类型筛选、合格结果筛选。
+- 上传：支持将导出结果上传到 GitHub。
+- APK：支持 Android WebView 壳运行内置后端。
 
 
 ## 二进制部署指南（请到原著作者项目下载）
